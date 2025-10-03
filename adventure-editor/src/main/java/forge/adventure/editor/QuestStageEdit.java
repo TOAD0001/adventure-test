@@ -7,57 +7,84 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.*;
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class QuestStageEdit extends FormPanel {
-    private boolean updating=false;
+    private boolean updating = false;
     AdventureQuestStage currentData;
     AdventureQuestData currentQuestData;
-    public JTextField name=new JTextField("", 25);
-    public JTextField description=new JTextField("", 25);
-    public TextListEdit itemNames =new TextListEdit();
-    public TextListEdit spriteNames =new TextListEdit();
-    public TextListEdit equipNames =new TextListEdit();
-    public TextListEdit prerequisites =new TextListEdit(currentQuestData!=null?(String[])Arrays.stream(currentQuestData.stages).filter(q -> !q.equals(currentData)).toArray():new String[]{}); //May not be the right way to do this, will come back to it.
 
-    JTabbedPane tabs =new JTabbedPane();
+    public JTextField name = new JTextField("", 25);
+    public JTextField description = new JTextField("", 25);
+    public TextListEdit itemNames = new TextListEdit();
+    public TextListEdit spriteNames = new TextListEdit();
+    public TextListEdit equipNames = new TextListEdit();
+    public TextListEdit prerequisites = new TextListEdit();
+
+    JTabbedPane tabs = new JTabbedPane();
     DialogEditor prologueEditor = new DialogEditor();
     DialogEditor epilogueEditor = new DialogEditor();
 
-    public QuestStageEdit()
-    {
+    // Equipment lists for multi-select slots
+    private JList<String> neckList;
+    private JList<String> bodyList;
+    private JList<String> leftList;
+    private JList<String> rightList;
+    private JList<String> ability1List;
+    private JList<String> ability2List;
+    private DefaultListModel<String> allItemsModel = new DefaultListModel<>();
+
+    public QuestStageEdit() {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         add(getInfoTab());
         add(tabs);
-        tabs.add("Objective", getObjectiveTab());
-        tabs.add("Prologue",getPrologueTab());
-        tabs.add("Epilogue",getEpilogueTab());
-        tabs.add("Prerequisites",getPrereqTab());
 
-        //temp
-        nyi.setForeground(Color.red);
-        //
+        tabs.add("Objective", getObjectiveTab());
+        tabs.add("Prologue", getPrologueTab());
+        tabs.add("Epilogue", getEpilogueTab());
+        tabs.add("Prerequisites", getPrereqTab());
 
         addListeners();
     }
 
-    public JPanel getInfoTab(){
+    private JPanel getInfoTab() {
         JPanel infoTab = new JPanel();
-        FormPanel center=new FormPanel();
-        center.add("name:",name);
-        center.add("description:",description);
-        name.setSize(400, name.getHeight());
-        description.setSize(400, description.getHeight());
+        FormPanel center = new FormPanel();
+
+        center.add("Name:", name);
+        center.add("Description:", description);
+
+        name.getDocument().addDocumentListener(new DocumentChangeListener(this::updateStage));
+        description.getDocument().addDocumentListener(new DocumentChangeListener(this::updateStage));
+
+        // Equipment multi-select lists
+        neckList = new JList<>(allItemsModel);
+        neckList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        bodyList = new JList<>(allItemsModel);
+        bodyList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        leftList = new JList<>(allItemsModel);
+        leftList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        rightList = new JList<>(allItemsModel);
+        rightList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        ability1List = new JList<>(allItemsModel);
+        ability1List.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        ability2List = new JList<>(allItemsModel);
+        ability2List.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+
+        center.add("Neck:", new JScrollPane(neckList));
+        center.add("Body:", new JScrollPane(bodyList));
+        center.add("Left:", new JScrollPane(leftList));
+        center.add("Right:", new JScrollPane(rightList));
+        center.add("Ability1:", new JScrollPane(ability1List));
+        center.add("Ability2:", new JScrollPane(ability2List));
+
         infoTab.add(center);
-        name.getDocument().addDocumentListener(new DocumentChangeListener(QuestStageEdit.this::updateStage));
-        description.getDocument().addDocumentListener(new DocumentChangeListener(QuestStageEdit.this::updateStage));
-        prerequisites.getEdit().getDocument().addDocumentListener(new DocumentChangeListener(QuestStageEdit.this::updateStage));
         return infoTab;
     }
 
-    public JPanel getPrologueTab(){
+    private JPanel getPrologueTab() {
         JPanel prologueTab = new JPanel();
         prologueTab.setLayout(new BoxLayout(prologueTab, BoxLayout.Y_AXIS));
         FormPanel center = new FormPanel();
@@ -66,7 +93,7 @@ public class QuestStageEdit extends FormPanel {
         return prologueTab;
     }
 
-    public JPanel getEpilogueTab(){
+    private JPanel getEpilogueTab() {
         JPanel epilogueTab = new JPanel();
         epilogueTab.setLayout(new BoxLayout(epilogueTab, BoxLayout.Y_AXIS));
         FormPanel center = new FormPanel();
@@ -75,674 +102,66 @@ public class QuestStageEdit extends FormPanel {
         return epilogueTab;
     }
 
-    private JComboBox<AdventureQuestController.ObjectiveTypes> objectiveType;
-
-    private final JLabel nyi = new JLabel("Not yet implemented");
-    private final JTextField deliveryItem=new JTextField(25);
-    private final JTextField mapFlag = new JTextField(25);
-
-    private Box mapFlagGroup;
-    private final JSpinner flagSpinner = new JSpinner(new SpinnerNumberModel(1, 1, 1000, 1));
-    private Box flagValueGroup;
-    private final JRadioButton anyPOI = new JRadioButton("Any Point of Interest matching tags is valid");
-    private final JRadioButton specificPOI = new JRadioButton("Only a specific Point of Interest is valid");
-    private final ButtonGroup anyPOIGroup = new ButtonGroup();
-    private final JCheckBox here = new JCheckBox("Use current map instead of selecting tags");
-    private final JCheckBox mixedEnemies = new JCheckBox("Mixture of enemy types matching");
-    private final JLabel count1Description = new JLabel("(Count 1 description)");
-    private final JLabel count2Description = new JLabel("(Count 2 description)");
-    private final JLabel count3Description = new JLabel("(Count 3 description)");
-    private final JLabel count4Description = new JLabel("(Count 4 description)");
-    private final JSpinner count1Spinner = new JSpinner(new SpinnerNumberModel(1, 0, 100, 1));
-    private final JSpinner count2Spinner = new JSpinner(new SpinnerNumberModel(1, 0, 100, 1));
-    private final JSpinner count3Spinner = new JSpinner(new SpinnerNumberModel(1, 0, 100, 1));
-    private final JSpinner count4Spinner = new JSpinner(new SpinnerNumberModel(1, 0, 100, 1));
-
-    private final JLabel arenaLabel = new JLabel("Enter the arena and prove your worth. (Note: Please be sure the PoIs selected have an arena)");
-    private final JLabel characterFlagLabel = new JLabel("Have the selected character flag set to a given value. (Caution: You're probably looking for QuestFlag or MapFlag instead)");
-    private final JLabel clearLabel = new JLabel("Clear all enemies from the target area.");
-    private final JLabel completeQuestLabel = new JLabel("Complete other quests issued by target POI. Primarily used for busy work as a part of storyline quests.");
-    private final JLabel defeatLabel = new JLabel("Defeat a number of enemies of the indicated type.");
-    private final JLabel deliveryLabel = new JLabel("Travel to the given destination to deliver an item (not tracked in inventory).");
-    private final JLabel escortLabel = new JLabel("Protect your target as they travel to their destination.");
-    private final JLabel eventFinishLabel = new JLabel("Finish (win or lose) tavern events");
-    private final JLabel eventWinLabel = new JLabel("Finish and win tavern events");
-    private final JLabel eventWinMatchLabel = new JLabel("Win individual matches in tavern events");
-    private final JLabel fetchLabel = new JLabel("Obtain the requested items (not tracked in inventory).");
-    private final JLabel findLabel = new JLabel("Locate the and enter a PoI.");
-    private final JLabel gatherLabel = new JLabel("Have the requested item in your inventory (tracked in inventory)");
-    private final JLabel giveLabel = new JLabel("Have the requested items removed from your inventory.");
-    private final JLabel haveReputationLabel = new JLabel("Have a minimum reputation in the selected PoI");
-    private final JLabel haveReputationInCurrentLocationLabel = new JLabel("Have a minimum reputation in the selected PoI (and be in it)");
-    private final JLabel huntLabel = new JLabel("Track down and defeat your target (on the overworld map).");
-    private final JLabel leaveLabel = new JLabel("Exit the current PoI and return to the overworld map.");
-    private final JLabel mapFlagLabel = new JLabel("Have a map flag set to a minimum value");
-    private final JLabel noneLabel = new JLabel("No visible objective. Use in coordination with hidden parallel objectives to track when to progress");
-    private final JLabel patrolLabel = new JLabel("Get close to generated coordinates before starting your next objective");
-    private final JLabel rescueLabel = new JLabel("Reach and rescue the target");
-    private final JLabel siegeLabel = new JLabel("Travel to the target location and defeat enemies attacking it");
-    private final JLabel questFlagLabel = new JLabel("Have a global quest flag set to a minimum value");
-    private final JLabel travelLabel = new JLabel("Travel to the given destination.");
-    private final JLabel useLabel = new JLabel("Use the indicated item from your inventory.");
-    private JTabbedPane poiPane = new JTabbedPane();
-    private final QuestTagSelector poiSelector = new QuestTagSelector("Destination Tags", false,true);
-    private final QuestTagSelector enemySelector = new QuestTagSelector("Enemy Tags", true,false);
-    private final JTextField poiTokenInput = new JTextField(25);
-
-    private final JLabel poiTokenLabel = new JLabel();
-    private final JLabel poiTokenDescription = new JLabel(
-                 "At the bottom of many objectives involving a PoI, you will see a text field in the format of '$poi_#'." +
-                 "Enter that tag here to ignore the PoI tag selector of this stage and instead use the same PoI that was selected " +
-                 "for that stage as the target PoI for this one as well.");
-
-    private void hideAllControls(){
-        arenaLabel.setVisible(false);
-        clearLabel.setVisible(false);
-        deliveryLabel.setVisible(false);
-        defeatLabel.setVisible(false);
-        escortLabel.setVisible(false);
-        fetchLabel.setVisible(false);
-        findLabel.setVisible(false);
-        gatherLabel.setVisible(false);
-        giveLabel.setVisible(false);
-        haveReputationLabel.setVisible(false);
-        huntLabel.setVisible(false);
-        leaveLabel.setVisible(false);
-        noneLabel.setVisible(false);
-        patrolLabel.setVisible(false);
-        rescueLabel.setVisible(false);
-        siegeLabel.setVisible(false);
-        mapFlagLabel.setVisible(false);
-        questFlagLabel.setVisible(false);
-        travelLabel.setVisible(false);
-        useLabel.setVisible(false);
-        deliveryItem.setVisible(false);
-        mapFlagGroup.setVisible(false);
-        flagValueGroup.setVisible(false);
-        anyPOI.setVisible(false);
-        specificPOI.setVisible(false);
-        here.setVisible(false);
-        mixedEnemies.setVisible(false);
-        enemySelector.setVisible(false);
-        count1Description.setVisible(false);
-        count2Description.setVisible(false);
-        count3Description.setVisible(false);
-        count4Description.setVisible(false);
-        count1Spinner.setVisible(false);
-        count2Spinner.setVisible(false);
-        count3Spinner.setVisible(false);
-        count4Spinner.setVisible(false);
-        poiPane.setVisible(false);
-        poiTokenLabel.setVisible(false);
-        nyi.setVisible(false);
-    }
-    private void switchPanels(){
-        hideAllControls();
-        if (objectiveType.getSelectedItem() == null){
-            return;
-        }
-        switch(objectiveType.getSelectedItem().toString()){
-            case "Arena":
-                arenaLabel.setVisible(true);
-                poiPane.setVisible(true);
-                count3Description.setText("Arena tournaments to win (minimum 1)");
-                count3Description.setVisible(true);
-                count3Spinner.setVisible(true);
-                count4Description.setText("Fail after tournaments not won (only applied if > 0)");
-                count4Description.setVisible(true);
-                count4Spinner.setVisible(true);
-                anyPOI.setVisible(true);
-                here.setVisible(true);
-                poiTokenLabel.setVisible(true);
-                break;
-            case "CharacterFlag":
-                characterFlagLabel.setVisible(true);
-                nyi.setVisible(true);
-                mapFlagGroup.setVisible(true);
-                flagValueGroup.setVisible(true);
-                break;
-            case "Clear":
-                clearLabel.setVisible(true);
-                poiPane.setVisible(true);
-                count1Description.setText("Target % of possible distances");
-                count1Description.setVisible(true);
-                count1Spinner.setVisible(true);
-                count2Description.setText("Plus or minus %");
-                count2Description.setVisible(true);
-                count2Spinner.setVisible(true);
-                anyPOI.setVisible(true);
-                here.setVisible(true);
-                poiTokenLabel.setVisible(true);
-                break;
-            case "CompleteQuest":
-                completeQuestLabel.setVisible(true);
-                poiPane.setVisible(true);
-                count1Description.setText("Target % of possible distances");
-                count1Description.setVisible(true);
-                count1Spinner.setVisible(true);
-                count2Description.setText("Plus or minus %");
-                count2Description.setVisible(true);
-                count2Spinner.setVisible(true);
-                count3Description.setText("Number of quests to complete (minimum 1)");
-                count3Description.setVisible(true);
-                count3Spinner.setVisible(true);
-                anyPOI.setVisible(true);
-                here.setVisible(true);
-                poiTokenLabel.setVisible(true);
-                break;
-            case "Defeat":
-                defeatLabel.setVisible(true);
-                mixedEnemies.setVisible(true);
-                count3Description.setText("Matches to win");
-                count3Description.setVisible(true);
-                count3Spinner.setVisible(true);
-                count4Description.setText("Fail after matches not won (only applied if > 0)");
-                count4Description.setVisible(true);
-                count4Spinner.setVisible(true);
-                enemySelector.setVisible(true);
-                break;
-            case "Delivery":
-                deliveryLabel.setVisible(true);
-                nyi.setVisible(true);
-                poiPane.setVisible(true);
-                anyPOI.setVisible(true);
-                here.setVisible(true);
-                deliveryItem.setVisible(true);
-                poiTokenLabel.setVisible(true);
-                break;
-            case "Escort":
-                escortLabel.setVisible(true);
-                nyi.setVisible(true);
-                poiPane.setVisible(true);
-                here.setVisible(true);
-                spriteNames.setVisible(true);
-                poiTokenLabel.setVisible(true);
-                break;
-            case "EventFinish":
-                eventFinishLabel.setVisible(true);
-                poiPane.setVisible(true);
-                count1Description.setText("Target % of possible distances");
-                count1Description.setVisible(true);
-                count1Spinner.setVisible(true);
-                count2Description.setText("Plus or minus %");
-                count2Description.setVisible(true);
-                count2Spinner.setVisible(true);
-                count3Description.setText("Events to complete (minimum 1)");
-                count3Description.setVisible(true);
-                count3Spinner.setVisible(true);
-                anyPOI.setVisible(true);
-                here.setVisible(true);
-                poiTokenLabel.setVisible(true);
-                break;
-            case "EventWin":
-                eventWinLabel.setVisible(true);
-                poiPane.setVisible(true);
-                count1Description.setText("Target % of possible distances");
-                count1Description.setVisible(true);
-                count1Spinner.setVisible(true);
-                count2Description.setText("Plus or minus %");
-                count2Description.setVisible(true);
-                count2Spinner.setVisible(true);
-                count3Description.setText("Events to win (minimum 1)");
-                count3Description.setVisible(true);
-                count3Spinner.setVisible(true);
-                count4Description.setText("Fail after events not won (only applied if > 0)");
-                count4Description.setVisible(true);
-                count4Spinner.setVisible(true);
-                anyPOI.setVisible(true);
-                here.setVisible(true);
-                poiTokenLabel.setVisible(true);
-                break;
-            case "EventWinMatch":
-                eventWinMatchLabel.setVisible(true);
-                poiPane.setVisible(true);
-                count1Description.setText("Target % of possible distances");
-                count1Description.setVisible(true);
-                count1Spinner.setVisible(true);
-                count2Description.setText("Plus or minus %");
-                count2Description.setVisible(true);
-                count2Spinner.setVisible(true);
-                count3Description.setText("Event matches to win (minimum 1)");
-                count3Description.setVisible(true);
-                count3Spinner.setVisible(true);
-                count4Description.setText("Fail after matches not won (only applied if > 0)");
-                count4Description.setVisible(true);
-                count4Spinner.setVisible(true);
-                anyPOI.setVisible(true);
-                here.setVisible(true);
-                poiTokenLabel.setVisible(true);
-                break;
-            case "Fetch":
-                fetchLabel.setVisible(true);
-                nyi.setVisible(true);
-                poiPane.setVisible(true);
-                anyPOI.setVisible(true);
-                here.setVisible(true);
-                deliveryItem.setVisible(true);
-                enemySelector.setVisible(true);
-                poiTokenLabel.setVisible(true);
-                break;
-            case "Find":
-                findLabel.setVisible(true);
-                nyi.setVisible(true);
-                poiPane.setVisible(true);
-                anyPOI.setVisible(true);
-                poiTokenLabel.setVisible(true);
-                break;
-            case "Gather":
-                gatherLabel.setVisible(true);
-                gatherLabel.setVisible(true);
-                nyi.setVisible(true);
-                itemNames.setVisible(true);
-                break;
-            case "Give":
-                giveLabel.setVisible(true);
-                nyi.setVisible(true);
-                itemNames.setVisible(true);
-                poiPane.setVisible(true);
-                poiTokenLabel.setVisible(true);
-                here.setVisible(true);
-                break;
-            case "HaveReputation":
-                poiPane.setVisible(true);
-                poiTokenLabel.setVisible(true);
-                anyPOI.setVisible(true);
-                here.setVisible(true);
-                count1Description.setText("Target % of possible distances");
-                count1Description.setVisible(true);
-                count1Spinner.setVisible(true);
-                count2Description.setText("Plus or minus %");
-                count2Description.setVisible(true);
-                count2Spinner.setVisible(true);
-                count3Description.setText("Minimum reputation needed");
-                count3Description.setVisible(true);
-                count3Spinner.setVisible(true);
-                break;
-            case "haveReputationInCurrentLocation":
-                haveReputationInCurrentLocationLabel.setVisible(true);
-                poiPane.setVisible(true);
-                poiTokenLabel.setVisible(true);
-                anyPOI.setVisible(true);
-                here.setVisible(true);
-                count1Description.setText("Target % of possible distances");
-                count1Description.setVisible(true);
-                count1Spinner.setVisible(true);
-                count2Description.setText("Plus or minus %");
-                count2Description.setVisible(true);
-                count2Spinner.setVisible(true);
-                count3Description.setText("Minimum reputation needed");
-                count3Description.setVisible(true);
-                count3Spinner.setVisible(true);
-                break;
-            case "Hunt":
-                huntLabel.setVisible(true);
-                enemySelector.setVisible(true);
-                count3Description.setText("Lifespan (seconds to complete hunt before despawn)");
-                count3Description.setVisible(true);
-                count3Spinner.setVisible(true);
-                break;
-            case "Leave":
-                leaveLabel.setVisible(true);
-                poiPane.setVisible(true);
-                poiTokenLabel.setVisible(true);
-                anyPOI.setVisible(true);
-                here.setVisible(true);
-                count1Description.setText("Target % of possible distances");
-                count1Description.setVisible(true);
-                count1Spinner.setVisible(true);
-                count2Description.setText("Plus or minus %");
-                count2Description.setVisible(true);
-                count2Spinner.setVisible(true);
-                count3Description.setText("Number of times to leave before triggering (minimum 1)");
-                count3Description.setVisible(true);
-                count3Spinner.setVisible(true);
-                break;
-            case "MapFlag":
-                mapFlagLabel.setVisible(true);
-                poiPane.setVisible(true);
-                here.setVisible(true);
-                anyPOI.setVisible(true);
-                mapFlagGroup.setVisible(true);
-                flagValueGroup.setVisible(true);
-                break;
-            case "None":
-                noneLabel.setVisible(true);
-                nyi.setVisible(true);
-                break;
-            case "Patrol":
-                patrolLabel.setVisible(true);
-                nyi.setVisible(true);
-                break;
-            case "Rescue":
-                rescueLabel.setVisible(true);
-                nyi.setVisible(true);
-                poiPane.setVisible(true);
-                anyPOI.setVisible(true);
-                poiTokenLabel.setVisible(true);
-                here.setVisible(true);
-                spriteNames.setVisible(true);
-                enemySelector.setVisible(true);
-                break;
-            case "Siege":
-                siegeLabel.setVisible(true);
-                nyi.setVisible(true);
-                poiPane.setVisible(true);
-                poiTokenLabel.setVisible(true);
-                anyPOI.setVisible(true);
-                here.setVisible(true);
-                enemySelector.setVisible(true);
-                mixedEnemies.setVisible(true);
-
-                poiPane.setVisible(true);
-                count1Description.setText("Target % of possible distances");
-                count1Description.setVisible(true);
-                count1Spinner.setVisible(true);
-                count2Description.setText("Plus or minus %");
-                count2Description.setVisible(true);
-                count2Spinner.setVisible(true);
-                count3Description.setText("Number of enemies to defeat");
-                count3Description.setVisible(true);
-                count3Spinner.setVisible(true);
-                count3Spinner.setVisible(true);
-                count4Description.setText("Time limit (will only fail if > 0)");
-                count4Description.setVisible(true);
-                count4Spinner.setVisible(true);
-                break;
-            case "QuestFlag":
-                questFlagLabel.setVisible(true);
-                mapFlagGroup.setVisible(true);
-                flagValueGroup.setVisible(true);
-                break;
-            case "Travel":
-                travelLabel.setVisible(true);
-                poiPane.setVisible(true);
-                poiTokenLabel.setVisible(true);
-                poiTokenInput.setVisible(true);
-                anyPOI.setVisible(true);
-                here.setVisible(true);
-                count1Description.setText("Target % of possible distances");
-                count1Description.setVisible(true);
-                count1Spinner.setVisible(true);
-                count2Description.setText("Plus or minus %");
-                count2Description.setVisible(true);
-                count2Spinner.setVisible(true);
-                count3Description.setText("Number of times to enter before triggering (minimum 1)");
-                count3Description.setVisible(true);
-                count3Spinner.setVisible(true);
-                break;
-            case "Use":
-                useLabel.setVisible(true);
-                nyi.setVisible(true);
-                itemNames.setVisible(true);
-                poiPane.setVisible(true);
-                anyPOI.setVisible(true);
-                here.setVisible(true);
-                poiTokenLabel.setVisible(true);
-                here.setVisible(true);
-                count3Description.setText("Number of times to use triggering (minimum 1)");
-                count3Description.setVisible(true);
-                count3Spinner.setVisible(true);
-                break;
-        }
-
-        specificPOI.setVisible(anyPOI.isVisible());
-    }
-
-    private void changeObjective(){
-        if (objectiveType.getSelectedItem() != null)
-            currentData.objective = AdventureQuestController.ObjectiveTypes.valueOf(objectiveType.getSelectedItem().toString());
-        switchPanels();
-    }
-
-    private JPanel getObjectiveTab(){
-        objectiveType = new JComboBox<>(AdventureQuestController.ObjectiveTypes.values());
-        objectiveType.addActionListener( e -> changeObjective());
-
-        JPanel objectiveTab = new JPanel();
-        JScrollPane scrollPane = new JScrollPane();
-        objectiveTab.add(scrollPane);
-        FormPanel center=new FormPanel();
-        center.add(objectiveType);
-        scrollPane.add(center);
-
-        mapFlagGroup = new Box(BoxLayout.Y_AXIS);
-        mapFlagGroup.add(new JLabel("Map flag to check"));
-        mapFlagGroup.add(mapFlag);
-
-        flagValueGroup = new Box(BoxLayout.Y_AXIS);
-        flagValueGroup.add(new JLabel("Flag value to check"));
-        flagValueGroup.add(flagSpinner);
-
-        anyPOIGroup.add(anyPOI);
-        anyPOIGroup.add(specificPOI);
-
-        JPanel poiSelectorPane = new JPanel();
-        poiSelectorPane.setLayout(new BorderLayout());
-        poiSelectorPane.add(poiSelector, BorderLayout.CENTER);
-        JPanel poiTokenPanel = new JPanel();
-
-        JPanel tokenPanel = new JPanel();
-        tokenPanel.add(new JLabel("Token to use:"));
-        tokenPanel.add(poiTokenInput);
-        tokenPanel.setBorder(new EmptyBorder(10, 10, 30, 10));
-
-        poiTokenPanel.add(poiTokenDescription);
-        poiTokenPanel.add(tokenPanel);
-        poiTokenPanel.add(here);
-
-        GroupLayout poiTokenLayout =  new GroupLayout(poiTokenPanel);
-
-
-        poiTokenLayout.setHorizontalGroup(
-            poiTokenLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                            .addComponent(poiTokenDescription)
-                            .addComponent(tokenPanel,GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
-                                    GroupLayout.PREFERRED_SIZE)
-                            .addComponent(here));
-
-        poiTokenLayout.setVerticalGroup(
-                poiTokenLayout.createSequentialGroup()
-                        .addComponent(poiTokenDescription)
-                        .addComponent(tokenPanel,GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
-                                GroupLayout.PREFERRED_SIZE)
-                        .addComponent(here));
-
-        poiTokenPanel.setLayout(poiTokenLayout);
-
-        poiPane.add("Specific PoI", poiTokenPanel);
-        poiPane.add("Tag Selector", poiSelectorPane);
-        poiPane.setPreferredSize(new Dimension(0,200));
-
-
-        center.add(arenaLabel);
-        center.add(clearLabel);
-        center.add(defeatLabel);
-        center.add(deliveryLabel);
-        center.add(escortLabel);
-        center.add(fetchLabel);
-        center.add(findLabel);
-        center.add(gatherLabel);
-        center.add(giveLabel);
-        center.add(haveReputationLabel);
-        center.add(huntLabel);
-        center.add(leaveLabel);
-        center.add(noneLabel);
-        center.add(patrolLabel);
-        center.add(rescueLabel);
-        center.add(siegeLabel);
-        center.add(mapFlagLabel);
-        center.add(questFlagLabel);
-        center.add(travelLabel);
-        center.add(useLabel);
-        center.add(nyi);
-        center.add(deliveryItem);
-        center.add(mapFlagGroup);
-        center.add(flagValueGroup);
-        center.add(anyPOI);
-        center.add(specificPOI);
-        center.add(mixedEnemies);
-        center.add(enemySelector);
-        center.add(count1Description);
-        center.add(count1Spinner);
-        center.add(count2Description);
-        center.add(count2Spinner);
-        center.add(count3Description);
-        center.add(count3Spinner);
-        center.add(count4Description);
-        center.add(count4Spinner);
-        center.add(poiPane);
-        center.add(poiTokenLabel);
-
-        switchPanels();
-
-        poiSelector.selectedItems.addListDataListener(new ListDataListener() {
-            @Override
-            public void intervalAdded(ListDataEvent e) {
-                rebuildPOIList();
-                rebuildEnemyList();
-            }
-
-            @Override
-            public void intervalRemoved(ListDataEvent e) {
-                rebuildPOIList();
-                rebuildEnemyList();
-            }
-
-            @Override
-            public void contentsChanged(ListDataEvent e) {
-                rebuildPOIList();
-                rebuildEnemyList();
-            }
-        });
-
-        return center;
-    }
-
-    private void rebuildPOIList(){
-        List<String> currentList = new ArrayList<>();
-
-        for(int i = 0; i< poiSelector.selectedItems.getSize(); i++){
-            currentList.add(poiSelector.selectedItems.getElementAt(i));
-        }
-        currentData.POITags = currentList;
-    }
-
-    private void rebuildEnemyList(){
-        List<String> currentList = new ArrayList<>();
-
-        for(int i = 0; i< enemySelector.selectedItems.getSize(); i++){
-            currentList.add(enemySelector.selectedItems.getElementAt(i));
-        }
-        currentData.enemyTags = currentList;
-    }
-
-    private JPanel getPrereqTab(){
-        JPanel prereqTab = new JPanel();
-        prereqTab.add(new JLabel("Insert Prereq data here"));
-
-        return prereqTab;
-    }
-
     private void refresh() {
-
-        if(currentData==null)
-        {
-            return;
-        }
-        setEnabled(false);
-        updating=true;
-        objectiveType.setSelectedItem(currentData.objective);
-        if (objectiveType.getSelectedItem() != null)
-            currentData.objective = AdventureQuestController.ObjectiveTypes.valueOf(objectiveType.getSelectedItem().toString()); //Ensuring this gets initialized on new
+        if (currentData == null) return;
+        updating = true;
 
         name.setText(currentData.name);
         description.setText(currentData.description);
-        deliveryItem.setText(currentData.deliveryItem);
-
-        if (currentData.enemyTags != null){
-            DefaultListModel<String> selectedEnemies = new DefaultListModel<>();
-            for (int i = 0; i < currentData.enemyTags.size(); i++) {
-                selectedEnemies.add(i, currentData.enemyTags.get(i));
-            }
-            enemySelector.load(selectedEnemies);
-        }
-        if (currentData.POITags != null){
-            DefaultListModel<String> selectedPOI = new DefaultListModel<>();
-            for (int i = 0; i < currentData.POITags.size(); i++) {
-                selectedPOI.add(i, currentData.POITags.get(i));
-            }
-            poiSelector.load(selectedPOI);
-        }
-
-        itemNames.setText(currentData.itemNames);
-        equipNames.setText(currentData.equipNames);
         prologueEditor.loadData(currentData.prologue);
         epilogueEditor.loadData(currentData.epilogue);
 
-
-        if (currentData.POITags != null){
-            DefaultListModel<String> selectedPOI = new DefaultListModel<>();
-            for (int i = 0; i < currentData.POITags.size(); i++) {
-                selectedPOI.add(i, currentData.POITags.get(i));
-            }
-            poiSelector.load(selectedPOI);
+        // Populate allItemsModel from itemNames
+        allItemsModel.clear();
+        if (currentData.itemNames != null) {
+            currentData.itemNames.forEach(allItemsModel::addElement);
         }
-        here.getModel().setSelected(currentData.here);
-        anyPOI.getModel().setSelected(currentData.anyPOI);
-        specificPOI.getModel().setSelected(!currentData.anyPOI);
-        poiTokenInput.setText(currentData.POIToken);
-        poiTokenLabel.setText( "To reference this point of interest: $(poi_" + currentData.id + ")");
 
-        ArrayList<String> temp = new ArrayList<>();
-        for (AdventureQuestStage stage : currentQuestData.stages){
-            if (stage.equals(currentData))
-                continue;
-            temp.add(stage.name);
-        }
-        prerequisites.setOptions(temp);
+        // Set selected items in each slot
+        setSelectedItems(neckList, currentData.equipSlots.get("Neck"));
+        setSelectedItems(bodyList, currentData.equipSlots.get("Body"));
+        setSelectedItems(leftList, currentData.equipSlots.get("Left"));
+        setSelectedItems(rightList, currentData.equipSlots.get("Right"));
+        setSelectedItems(ability1List, currentData.equipSlots.get("Ability1"));
+        setSelectedItems(ability2List, currentData.equipSlots.get("Ability2"));
 
-        count1Spinner.getModel().setValue(currentData.count1);
-        count2Spinner.getModel().setValue(currentData.count2);
-        count3Spinner.getModel().setValue(currentData.count3);
-        count4Spinner.getModel().setValue(currentData.count4);
-
-        updating=false;
-        setEnabled(true);
+        updating = false;
     }
-    public void updateStage()
-    {
-        if(currentData==null||updating)
-            return;
 
-        currentData.name=name.getText();
-        currentData.description= description.getText();
+    private void setSelectedItems(JList<String> list, List<String> items) {
+        if (items == null) return;
+        List<Integer> indices = items.stream()
+                .map(allItemsModel::indexOf)
+                .filter(i -> i >= 0)
+                .collect(Collectors.toList());
+        int[] selectedIndices = indices.stream().mapToInt(i -> i).toArray();
+        list.setSelectedIndices(selectedIndices);
+    }
+
+    public void updateStage() {
+        if (currentData == null || updating) return;
+
+        currentData.name = name.getText();
+        currentData.description = description.getText();
         currentData.prologue = prologueEditor.getDialogData();
         currentData.epilogue = epilogueEditor.getDialogData();
-        currentData.deliveryItem = deliveryItem.getText();
-        currentData.itemNames = itemNames.getList()==null?new ArrayList<>():Arrays.asList(itemNames.getList());
-        currentData.equipNames = equipNames.getList()==null?new ArrayList<>():Arrays.asList(equipNames.getList());
-        currentData.anyPOI = anyPOI.getModel().isSelected();
-        currentData.mapFlag = mapFlag.getText();
-        currentData.mapFlagValue = Integer.parseInt(flagSpinner.getModel().getValue().toString());
-        currentData.count1 = Integer.parseInt(count1Spinner.getModel().getValue().toString());
-        currentData.count2 = Integer.parseInt(count2Spinner.getModel().getValue().toString());
-        currentData.count3 = Integer.parseInt(count3Spinner.getModel().getValue().toString());
-        currentData.count4 = Integer.parseInt(count4Spinner.getModel().getValue().toString());
-        currentData.mixedEnemies = mixedEnemies.getModel().isSelected();
-        currentData.here = here.getModel().isSelected();
-        currentData.POIToken = poiTokenInput.getText();
+        currentData.itemNames = Collections.list(allItemsModel.elements());
 
-        rebuildPOIList();
-        rebuildEnemyList();
+        currentData.equipSlots.put("Neck", neckList.getSelectedValuesList());
+        currentData.equipSlots.put("Body", bodyList.getSelectedValuesList());
+        currentData.equipSlots.put("Left", leftList.getSelectedValuesList());
+        currentData.equipSlots.put("Right", rightList.getSelectedValuesList());
+        currentData.equipSlots.put("Ability1", ability1List.getSelectedValuesList());
+        currentData.equipSlots.put("Ability2", ability2List.getSelectedValuesList());
+
         emitChanged();
     }
+
     public void setCurrentStage(AdventureQuestStage stageData, AdventureQuestData data) {
-        if (stageData == null)
-            stageData = new AdventureQuestStage();
-        if (data == null)
-            data = new AdventureQuestData();
-        currentData =stageData;
-        currentQuestData=data;
+        if (stageData == null) stageData = new AdventureQuestStage();
+        if (data == null) data = new AdventureQuestData();
+        currentData = stageData;
+        currentQuestData = data;
         setVisible(true);
         refresh();
     }
@@ -750,6 +169,7 @@ public class QuestStageEdit extends FormPanel {
     public void addChangeListener(ChangeListener listener) {
         listenerList.add(ChangeListener.class, listener);
     }
+
     protected void emitChanged() {
         ChangeListener[] listeners = listenerList.getListeners(ChangeListener.class);
         if (listeners != null && listeners.length > 0) {
@@ -760,20 +180,17 @@ public class QuestStageEdit extends FormPanel {
         }
     }
 
-    private void addListeners(){
-        deliveryItem.getDocument().addDocumentListener(new DocumentChangeListener(QuestStageEdit.this::updateStage));
-        mapFlag.getDocument().addDocumentListener(new DocumentChangeListener(QuestStageEdit.this::updateStage));
-        flagSpinner.getModel().addChangeListener(q -> QuestStageEdit.this.updateStage());
-        count1Spinner.getModel().addChangeListener(q -> QuestStageEdit.this.updateStage());
-        count2Spinner.getModel().addChangeListener(q -> QuestStageEdit.this.updateStage());
-        count3Spinner.getModel().addChangeListener(q -> QuestStageEdit.this.updateStage());
-        count4Spinner.getModel().addChangeListener(q -> QuestStageEdit.this.updateStage());
-        mixedEnemies.getModel().addChangeListener(q -> QuestStageEdit.this.updateStage());
-        here.getModel().addChangeListener(q -> QuestStageEdit.this.updateStage());
-        anyPOI.getModel().addChangeListener(q -> QuestStageEdit.this.updateStage());
-        deliveryItem.getDocument().addDocumentListener(new DocumentChangeListener(QuestStageEdit.this::updateStage));
-        mapFlag.getDocument().addDocumentListener(new DocumentChangeListener(QuestStageEdit.this::updateStage));
-        prologueEditor.addChangeListener(q -> QuestStageEdit.this.updateStage());
-        epilogueEditor.addChangeListener(q -> QuestStageEdit.this.updateStage());
+    private void addListeners() {
+        neckList.addListSelectionListener(e -> updateStage());
+        bodyList.addListSelectionListener(e -> updateStage());
+        leftList.addListSelectionListener(e -> updateStage());
+        rightList.addListSelectionListener(e -> updateStage());
+        ability1List.addListSelectionListener(e -> updateStage());
+        ability2List.addListSelectionListener(e -> updateStage());
+        itemNames.getEdit().getDocument().addDocumentListener(new DocumentChangeListener(this::refresh));
+        prologueEditor.addChangeListener(e -> updateStage());
+        epilogueEditor.addChangeListener(e -> updateStage());
+        name.getDocument().addDocumentListener(new DocumentChangeListener(this::updateStage));
+        description.getDocument().addDocumentListener(new DocumentChangeListener(this::updateStage));
     }
 }
